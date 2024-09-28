@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEffect } from 'react';
 import { Container, Typography, Button } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -7,6 +8,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 const UpdateSuccessPage = () => {
     const {id} = useParams();
     const navigate = useNavigate();
+
+    useEffect(() => {
+      throw new Error("Test error!"); // This will trigger the error boundary
+    }, []);
     
     
     return (

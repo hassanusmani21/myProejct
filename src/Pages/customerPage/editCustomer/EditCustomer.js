@@ -39,6 +39,10 @@ export default function EditCustomer() {
     searchFilter(startDate,endDate,branch,customerName,customerRef,currentPage,itemsPerPage,setData,token)
 
     }, [currentPage, itemsPerPage]);
+
+    useEffect(() => {
+      throw new Error("Test error!"); // This will trigger the error boundary
+    }, []);
     
 
   

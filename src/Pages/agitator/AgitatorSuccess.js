@@ -12,7 +12,7 @@ const AgitatorSuccessPage = () => {
   const errorMessage = location.state?.error;
 
   useEffect(() => {
-    // throw new Error("Test error!"); // This will trigger the error boundary
+    throw new Error("Test error!"); // This will trigger the error boundary
   }, []);
 
   return (
