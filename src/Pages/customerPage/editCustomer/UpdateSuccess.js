@@ -9,9 +9,6 @@ const UpdateSuccessPage = () => {
     const {id} = useParams();
     const navigate = useNavigate();
 
-    useEffect(() => {
-      throw new Error("Test error!"); // This will trigger the error boundary
-    }, []);
     
     
     return (

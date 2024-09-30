@@ -40,11 +40,6 @@ export default function EditCustomer() {
 
     }, [currentPage, itemsPerPage]);
 
-    useEffect(() => {
-      throw new Error("Test error!"); // This will trigger the error boundary
-    }, []);
-    
-
   
     const editDetail = (detail) => {
       // setEditData(detail.customerReferenceNumber);
