@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { TextField, Button, Container, Grid, IconButton, CircularProgress, Snackbar, Alert } from '@mui/material';
+import { TextField, Button, Container, Grid, IconButton, Snackbar, Alert } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import "./CustomerForm.css";
 import { useNavigate, useParams } from 'react-router-dom';
 import { getCustomer, handleSubmit, handleUpdate } from '../../../apis/CustomerApi';
+import { useLoader } from '../../../context/LoaderContext';
 
 export default function Customer() {
   const navigate = useNavigate();
   let { rId } = useParams();
+  const { showLoader, hideLoader } = useLoader();
 
   const [formData, setFormData] = useState({
     branch: '',
@@ -20,28 +22,31 @@ export default function Customer() {
     lastUpdatedOn: ''
   });
 
-  const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ open: false, message: '', severity: 'info' });
 
   useEffect(() => {
-    if (rId !== undefined) {
-      setLoading(true);
-      getCustomer(rId, setFormData, setLoading, handleError);
-    } else {
-      setFormData({
-        branch: '',
-        customerName: '',
-        customerDetail: [],
-        insertedByUserId: '10223',
-        lastUpdatedByUserId: '10223',
-        insertedOn: '',
-        lastUpdatedOn: ''
-      });
-    }
+    const fetchCustomer = async () => {
+      if (rId !== undefined) {
+        showLoader();
+        try {
+          await getCustomer(rId, setFormData, hideLoader, handleError);
+        } catch (err) {
+          handleError(err);
+        } finally {
+          hideLoader();
+        }
+      }
+    };
+    fetchCustomer();
   }, [rId]);
 
   const handleError = (error) => {
-    setAlert({ open: true, message: error.message || 'An error occurred', severity: 'error' });
+    setAlert({ 
+      open: true, 
+      message: error?.message || 'An error occurred', 
+      severity: 'error' 
+    });
+    hideLoader();
   };
 
   const handleChange = (e, index) => {
@@ -81,54 +86,71 @@ export default function Customer() {
   const handleDeleteCustomerDetail = index => {
     const confirmDelete = window.confirm("Are you sure you want to delete this customer detail?");
     if (confirmDelete) {
-      setFormData(prevState => {
-        const newCustomerDetail = [...prevState.customerDetail];
-        newCustomerDetail.splice(index, 1);
-        return { ...prevState, customerDetail: newCustomerDetail };
-      });
-      setAlert({ open: true, message: 'Customer detail deleted successfully', severity: 'success' });
+      showLoader();
+      try {
+        setFormData(prevState => {
+          const newCustomerDetail = [...prevState.customerDetail];
+          newCustomerDetail.splice(index, 1);
+          return { ...prevState, customerDetail: newCustomerDetail };
+        });
+        setAlert({ 
+          open: true, 
+          message: 'Customer detail deleted successfully', 
+          severity: 'success' 
+        });
+      } finally {
+        hideLoader();
+      }
     }
   };
 
   const cancelUpdate = () => {
     const confirmCancel = window.confirm("Are you sure you want to cancel the update?");
     if (confirmCancel) {
-      navigate('/');
-      window.location.reload();
+      showLoader();
+      try {
+        navigate('/');
+      } finally {
+        hideLoader();
+      }
     }
   };
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    showLoader();
     try {
-      const result = await handleSubmit(formData, setLoading, handleError);
-      setAlert({ open: true, message: 'Customer registered successfully', severity: 'success' });
+      const result = await handleSubmit(formData, hideLoader, handleError);
+      setAlert({ 
+        open: true, 
+        message: 'Customer registered successfully', 
+        severity: 'success' 
+      });
       navigate(`/registerSuccess/${result}`);
     } catch (err) {
       handleError(err);
     } finally {
-      setLoading(false);
+      hideLoader();
     }
   };
 
   const handleFormUpdate = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    showLoader();
     try {
-      await handleUpdate(formData, setLoading, handleError);
-      setAlert({ open: true, message: 'Customer updated successfully', severity: 'success' });
+      await handleUpdate(formData, hideLoader, handleError);
+      setAlert({ 
+        open: true, 
+        message: 'Customer updated successfully', 
+        severity: 'success' 
+      });
       navigate(`/updateSuccess/${formData.customerReferenceNumber}`);
     } catch (err) {
       handleError(err);
     } finally {
-      setLoading(false);
+      hideLoader();
     }
   };
-
-  if (loading) {
-    return <CircularProgress />;
-  }
 
   return (
     <Container className="container" sx={{ marginTop: "20px", backgroundColor: "rgb(250, 251, 251)" }}>
@@ -196,17 +218,39 @@ export default function Customer() {
           ))}
         </Grid>
         <Grid item xs={4}>
-          <Button className="add-btn" sx={{ margin: "0rem 1rem 1rem 1rem" }} onClick={handleAddCustomerDetail}><AddIcon /> Add Customer Details</Button>
+          <Button 
+            className="add-btn" 
+            sx={{ margin: "0rem 1rem 1rem 1rem" }} 
+            onClick={handleAddCustomerDetail}
+          >
+            <AddIcon /> Add Customer Details
+          </Button>
           {!rId ? (
-            <Button className="submit-btn" sx={{ margin: "1rem 1rem 0rem 1rem" }} type="submit" variant="contained" disabled={loading}>
-              {loading ? <CircularProgress size={24} /> : 'Submit'}
+            <Button 
+              className="submit-btn" 
+              sx={{ margin: "1rem 1rem 0rem 1rem" }} 
+              type="submit" 
+              variant="contained"
+            >
+              Submit
             </Button>
           ) : (
             <>
-              <Button className="update-btn" sx={{ margin: "1rem 1rem 0rem 1rem" }} variant="contained" type="submit" disabled={loading}>
-                {loading ? <CircularProgress size={24} /> : 'Update'}
+              <Button 
+                className="update-btn" 
+                sx={{ margin: "1rem 1rem 0rem 1rem" }} 
+                variant="contained" 
+                type="submit"
+              >
+                Update
               </Button>
-              <Button className="cancel-btn" variant="contained" onClick={cancelUpdate}>Cancel</Button>
+              <Button 
+                className="cancel-btn" 
+                variant="contained" 
+                onClick={cancelUpdate}
+              >
+                Cancel
+              </Button>
             </>
           )}
         </Grid>
@@ -217,7 +261,11 @@ export default function Customer() {
         onClose={() => setAlert({ ...alert, open: false })}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={() => setAlert({ ...alert, open: false })} severity={alert.severity} sx={{ width: '100%' }}>
+        <Alert 
+          onClose={() => setAlert({ ...alert, open: false })} 
+          severity={alert.severity} 
+          sx={{ width: '100%' }}
+        >
           {alert.message}
         </Alert>
       </Snackbar>

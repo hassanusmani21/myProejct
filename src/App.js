@@ -7,6 +7,7 @@ import Topbar from "./components/global/TopBar";
 import CustomSidebar from "./components/global/SideBar";
 import AllRoute from './router/allRoute.js';
 import { ErrorBoundary } from 'react-error-boundary';
+import { LoaderProvider } from './context/LoaderContext';
 import './App.css';
 import useToken from "./contextApi/useToken.js";
 
@@ -42,21 +43,22 @@ function App() {
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-
-        {/* Error Boundary wrapping the whole app */}
-        <ErrorBoundary FallbackComponent={ErrorFallback}>
-          <div className="app">
-            <main className="content">
-              {!isSidebar && savedToken && savedToken !== 'null' && !resetPath &&
-                <CustomSidebar isSidebar={isSidebar} setIsSidebar={setIsSidebar} />
-              }
-              {!isLogin && !resetPath &&
-                <Topbar isSidebar={isSidebar} setIsSidebar={setIsSidebar} />
-              }
-              <AllRoute isSidebar={isSidebar} />
-            </main>
-          </div>
-        </ErrorBoundary>
+        <LoaderProvider>
+          {/* Error Boundary wrapping the whole app */}
+          <ErrorBoundary FallbackComponent={ErrorFallback}>
+            <div className="app">
+              <main className="content">
+                {!isSidebar && savedToken && savedToken !== 'null' && !resetPath &&
+                  <CustomSidebar isSidebar={isSidebar} setIsSidebar={setIsSidebar} />
+                }
+                {!isLogin && !resetPath &&
+                  <Topbar isSidebar={isSidebar} setIsSidebar={setIsSidebar} />
+                }
+                <AllRoute isSidebar={isSidebar} />
+              </main>
+            </div>
+          </ErrorBoundary>
+        </LoaderProvider>
       </ThemeProvider>
     </ColorModeContext.Provider>
   );

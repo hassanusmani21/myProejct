@@ -17,7 +17,10 @@ axiosInstance.interceptors.request.use(
     return config;
   },
   (error) => {
-    return Promise.reject(error);
+    return Promise.reject({
+      message: error?.message || 'Request configuration error',
+      status: 500,
+    });
   }
 );
 
@@ -25,10 +28,26 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle network errors
+    if (!error.response) {
+      return Promise.reject({
+        message: 'Network error occurred. Please check your connection.',
+        status: 0,
+      });
+    }
+
+    // Handle API errors
+    const errorMessage = error.response.data?.message || 
+                        error.response.data?.error ||
+                        error.message ||
+                        'An unexpected error occurred';
+    
     const customError = {
-      message: error.response?.data?.message || 'An unexpected error occurred',
-      status: error.response?.status,
+      message: errorMessage,
+      status: error.response?.status || 500,
+      data: error.response?.data || null
     };
+    
     return Promise.reject(customError);
   }
 );

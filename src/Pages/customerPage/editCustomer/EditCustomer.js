@@ -3,7 +3,7 @@ import { styled } from '@mui/material/styles';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell, { tableCellClasses } from '@mui/material/TableCell';
-import { TextField, Button, Container, Grid, CircularProgress, Snackbar } from '@mui/material';
+import { TextField, Button, Container, Grid, Snackbar, Alert } from '@mui/material';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { deleteDetail, searchFilter } from '../../../apis/CustomerApi';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
-import useToken from '../../../contextApi/useToken';
+import { useLoader } from '../../../context/LoaderContext';
 
 export default function EditCustomer() {
   const [data, setData] = useState([]);
@@ -27,40 +27,80 @@ export default function EditCustomer() {
   const [branch, setBranch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const token = useToken();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const { showLoader, hideLoader } = useLoader();
+  const [alert, setAlert] = useState({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
 
   useEffect(() => {
     fetchData();
   }, [currentPage, itemsPerPage]);
 
+  const handleError = (error) => {
+    console.error('Error occurred:', error);
+    setAlert({
+      open: true,
+      message: error?.response?.data?.message || error?.message || 'An unexpected error occurred',
+      severity: 'error'
+    });
+  };
+
   const fetchData = async () => {
-    setLoading(true);
-    setError(null);
     try {
-      await searchFilter({ startDate, endDate, branch, customerName, customerRef, currentPage, itemsPerPage }, setData, setLoading, setError);
-    } catch (err) {
-      setError(err.message || 'An error occurred while fetching data');
+      showLoader();
+      await searchFilter(
+        { startDate, endDate, branch, customerName, customerRef, currentPage, itemsPerPage },
+        setData,
+        showLoader,
+        handleError
+      );
+    } catch (error) {
+      handleError(error);
     } finally {
-      setLoading(false);
+      hideLoader();
     }
   };
 
+
+ 
   const editDetail = (detail) => {
-    navigate(`/Customer/${detail.customerReferenceNumber}`);
+    try {
+      if (!detail?.customerReferenceNumber) {
+        throw new Error('Invalid customer reference number');
+      }
+      navigate(`/Customer/${detail.customerReferenceNumber}`);
+      setAlert({
+        open: true,
+        message: 'Navigating to edit customer...',
+        severity: 'info'
+      });
+    } catch (error) {
+      handleError(error);
+    }
   };
 
   const handleDelete = async (crId) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await deleteDetail(crId, setIsDeleted, setError);
-      fetchData(); // Refresh the data after deletion
-    } catch (err) {
-      setError(err.message || 'An error occurred while deleting the customer');
-    } finally {
-      setLoading(false);
+    const confirmDelete = window.confirm("Are you sure you want to delete this customer?");
+    if (confirmDelete) {
+      try {
+        if (!crId) {
+          throw new Error('Invalid customer reference number for deletion');
+        }
+        showLoader();
+        await deleteDetail(crId, setIsDeleted, handleError);
+        setAlert({
+          open: true,
+          message: 'Customer deleted successfully',
+          severity: 'success'
+        });
+        await fetchData(); // Refresh the data after deletion
+      } catch (error) {
+        handleError(error);
+      } finally {
+        hideLoader();
+      }
     }
   };
 
@@ -73,10 +113,6 @@ export default function EditCustomer() {
     setCurrentPage(0);
     fetchData();
   };
-
-  if (loading) {
-    return <CircularProgress />;
-  }
 
   return (
     <div>
@@ -149,7 +185,11 @@ export default function EditCustomer() {
           </Grid>
         </div>
 
-        <Button onClick={handleSearch} style={{width:"15%", margin:"1rem 2rem", color:"white", backgroundColor:"#03C9D7"}} variant="contained">
+        <Button 
+          onClick={handleSearch} 
+          style={{width:"15%", margin:"1rem 2rem", color:"white", backgroundColor:"#03C9D7"}} 
+          variant="contained"
+        >
           Search
         </Button>
 
@@ -179,12 +219,20 @@ export default function EditCustomer() {
                     <TableCell align="right">{row.insertedOn}</TableCell>
                     <TableCell align="right">{row.lastUpdatedOn}</TableCell>
                     <TableCell align="right">
-                      <button onClick={() => editDetail(row)} style={{ margin: '0px 3px', border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }}>
-                        <EditIcon style={{ color: 'blue' }} />
-                      </button>
-                      <button style={{ border: 'none', backgroundColor: 'transparent', cursor: 'pointer' }} onClick={() => handleDelete(row.customerReferenceNumber)}>
+                      <Button
+                        onClick={() => editDetail(row)}
+                        style={{ minWidth: 'unset', padding: '6px' }}
+                        title="Edit Customer"
+                      >
+                        <EditIcon style={{ color: '#03C9D7' }} />
+                      </Button>
+                      <Button
+                        style={{ minWidth: 'unset', padding: '6px' }}
+                        onClick={() => handleDelete(row.customerReferenceNumber)}
+                        title="Delete Customer"
+                      >
                         <DeleteIcon style={{ color: 'red' }} />
-                      </button>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -203,30 +251,52 @@ export default function EditCustomer() {
 
           <div className="pagination-container">
             <label className="pagination-label">Items Per Page:</label>
-            <select value={itemsPerPage} onChange={(e) => paginate(Number(e.target.value))} className="pagination-select">
+            <select 
+              value={itemsPerPage} 
+              onChange={(e) => paginate(Number(e.target.value))} 
+              className="pagination-select"
+            >
               <option value={5}>5</option>
               <option value={10}>10</option>
               <option value={15}>15</option>
             </select>
 
             <label className="pagination-label">Select Page:</label>
-            <button className="pagination-button" disabled={currentPage <= 0} onClick={() => setCurrentPage(currentPage - 1)}>
+            <button 
+              className="pagination-button" 
+              disabled={currentPage <= 0} 
+              onClick={() => setCurrentPage(currentPage - 1)}
+            >
               <KeyboardDoubleArrowLeftIcon style={{ height: '0.9rem', marginTop:'0.1rem' }} />
             </button>
             <span className="pagination-span">{currentPage + 1}</span>
-            <button className="pagination-button" disabled={data.length < itemsPerPage} onClick={() => setCurrentPage(currentPage + 1)}>
+            <button 
+              className="pagination-button" 
+              disabled={data.length < itemsPerPage} 
+              onClick={() => setCurrentPage(currentPage + 1)}
+            >
               <KeyboardDoubleArrowRightIcon style={{ height: '0.9rem', marginTop:'0.1rem' }} />
             </button>
           </div>
           <hr style={{ border: '1px solid lightGray' }} />
         </TableContainer>
       </div>
+
+      {/* Alert Messages */}
       <Snackbar
-        open={!!error}
+        open={alert.open}
         autoHideDuration={6000}
-        onClose={() => setError(null)}
-        message={error}
-      />
+        onClose={() => setAlert({ ...alert, open: false })}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setAlert({ ...alert, open: false })}
+          severity={alert.severity}
+          sx={{ width: '100%' }}
+        >
+          {alert.message}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
